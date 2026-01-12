@@ -90,9 +90,9 @@ export default function Grouping() {
     // Check if dropped on another note (to create group)
     const targetNote = notes.find(n => n.id === targetId);
     if (targetNote && draggedNoteId !== targetId) {
-      // Create a new group - allow cross-column grouping
+      // Create a new group in the target note's column (allow cross-column grouping)
       socket?.emit('group:create', {
-        column: 'mixed', // Use 'mixed' for all groups
+        column: targetNote.column, // Use target note's column
         noteIds: [draggedNoteId, targetId]
       });
     } else if (targetId.startsWith('group-')) {
@@ -124,52 +124,41 @@ export default function Grouping() {
           onDragEnd={handleDragEnd}
         >
           <div className="grid lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3 space-y-6">
-              {/* Groups Section */}
-              {groups.length > 0 && (
-                <div>
-                  <h2 className="text-xl font-bold mb-4">Groups ({groups.length})</h2>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {groups.map(group => (
-                      <div key={group.id} id={`group-${group.id}`}>
-                        <Group group={group} editable />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="lg:col-span-3">
+              <div className="grid md:grid-cols-3 gap-6">
+                {columns.map(column => {
+                  const columnGroups = groups.filter(g => g.column === column);
+                  const ungroupedNotes = getUngroupedNotes(column);
 
-              {/* Ungrouped Notes by Column */}
-              <div>
-                <h2 className="text-xl font-bold mb-4">Ungrouped Notes</h2>
-                <div className="grid md:grid-cols-3 gap-6">
-                  {columns.map(column => {
-                    const ungroupedNotes = getUngroupedNotes(column);
+                  return (
+                    <div key={column}>
+                      <h3 className="text-xl font-bold mb-4 capitalize">{column}</h3>
 
-                    return (
-                      <div key={column}>
-                        <h3 className="text-lg font-semibold mb-3 capitalize">{column}</h3>
+                      <div className="space-y-3">
+                        {columnGroups.map(group => (
+                          <div key={group.id} id={`group-${group.id}`}>
+                            <Group group={group} editable />
+                          </div>
+                        ))}
 
                         <SortableContext
                           items={ungroupedNotes.map(n => n.id)}
                           strategy={verticalListSortingStrategy}
                         >
-                          <div className="space-y-3">
-                            {ungroupedNotes.map(note => (
-                              <DraggableNote key={note.id} note={note} />
-                            ))}
-
-                            {ungroupedNotes.length === 0 && (
-                              <div className="card bg-slate-50 text-center py-6 text-slate-400 text-sm">
-                                No ungrouped notes
-                              </div>
-                            )}
-                          </div>
+                          {ungroupedNotes.map(note => (
+                            <DraggableNote key={note.id} note={note} />
+                          ))}
                         </SortableContext>
+
+                        {columnGroups.length === 0 && ungroupedNotes.length === 0 && (
+                          <div className="card bg-slate-50 text-center py-8 text-slate-400 text-sm">
+                            No notes in this column
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
