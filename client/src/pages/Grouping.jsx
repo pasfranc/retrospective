@@ -120,13 +120,34 @@ export default function Grouping() {
 
     if (isGroup) {
       const groupId = activeId.replace('group-', '');
+      const draggedGroup = groups.find(g => g.id === groupId);
 
-      // Check if dropped on a column
+      // Check if dropped on a column drop zone
       if (targetId.startsWith('column-')) {
         const targetColumn = targetId.replace('column-', '');
-        socket?.emit('group:move', { groupId, column: targetColumn });
+        if (draggedGroup.column !== targetColumn) {
+          socket?.emit('group:move', { groupId, column: targetColumn });
+        }
         return;
       }
+
+      // Check if dropped on another group - move to that group's column
+      if (targetId.startsWith('group-')) {
+        const targetGroupId = targetId.replace('group-', '');
+        const targetGroup = groups.find(g => g.id === targetGroupId);
+        if (targetGroup && draggedGroup.column !== targetGroup.column) {
+          socket?.emit('group:move', { groupId, column: targetGroup.column });
+        }
+        return;
+      }
+
+      // Check if dropped on a note - move to that note's column
+      const targetNote = notes.find(n => n.id === targetId);
+      if (targetNote && draggedGroup.column !== targetNote.column) {
+        socket?.emit('group:move', { groupId, column: targetNote.column });
+        return;
+      }
+
       return;
     }
 
