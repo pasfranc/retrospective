@@ -66,7 +66,7 @@ function initDatabase() {
       id TEXT PRIMARY KEY,
       session_id TEXT NOT NULL,
       title TEXT NOT NULL DEFAULT '',
-      column TEXT NOT NULL CHECK(column IN ('start', 'stop', 'continue')),
+      column TEXT NOT NULL CHECK(column IN ('start', 'stop', 'continue', 'mixed')),
       created_at INTEGER NOT NULL,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     )
