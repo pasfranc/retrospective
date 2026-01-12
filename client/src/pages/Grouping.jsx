@@ -2,7 +2,6 @@ import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSe
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
-import { Ungroup } from 'lucide-react';
 import PhaseIndicator from '../components/PhaseIndicator';
 import Group from '../components/Group';
 import Note from '../components/Note';
@@ -58,33 +57,6 @@ function ColumnDropZone({ column }) {
       }`}
       style={{ minHeight: '100px' }}
     />
-  );
-}
-
-function UngroupZone() {
-  const { setNodeRef, isOver } = useDroppable({
-    id: 'ungroup-zone'
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`card border-2 border-dashed transition-all ${
-        isOver
-          ? 'bg-orange-50 border-orange-400'
-          : 'bg-slate-50 border-slate-300'
-      }`}
-    >
-      <div className="text-center py-8">
-        <Ungroup className={`w-12 h-12 mx-auto mb-3 ${isOver ? 'text-orange-500' : 'text-slate-400'}`} />
-        <p className={`font-semibold mb-1 ${isOver ? 'text-orange-600' : 'text-slate-600'}`}>
-          Ungroup Zone
-        </p>
-        <p className="text-xs text-slate-500">
-          Drag notes from groups here to ungroup them
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -151,12 +123,16 @@ export default function Grouping() {
       return;
     }
 
-    // Original note dragging logic
+    // Note dragging logic
     const draggedNoteId = activeId;
+    const draggedNote = notes.find(n => n.id === draggedNoteId);
 
-    // Check if dropped on "ungroup" zone
-    if (targetId === 'ungroup-zone') {
-      socket?.emit('note:move', { noteId: draggedNoteId, groupId: null });
+    // Check if dropped on a column - ungroup the note if it's in a group
+    if (targetId.startsWith('column-')) {
+      if (draggedNote?.group_id) {
+        // Ungroup the note
+        socket?.emit('note:move', { noteId: draggedNoteId, groupId: null });
+      }
       return;
     }
 
@@ -168,12 +144,13 @@ export default function Grouping() {
         column: targetNote.column, // Use target note's column
         noteIds: [draggedNoteId, targetId]
       });
-    } else if (targetId.startsWith('group-')) {
-      // Dropped on a group
+      return;
+    }
+
+    // Check if dropped on a group
+    if (targetId.startsWith('group-')) {
       const groupId = targetId.replace('group-', '');
       socket?.emit('note:move', { noteId: draggedNoteId, groupId });
-    } else if (targetId.startsWith('column-')) {
-      // Dropped on a column - do nothing for notes (only groups can be moved between columns)
       return;
     }
   };
@@ -190,7 +167,7 @@ export default function Grouping() {
         <div className="mt-8 mb-6">
           <h1 className="text-3xl font-bold mb-2">Grouping</h1>
           <p className="text-slate-600">
-            Drag notes onto each other to create groups. You can group notes from different columns together! Drag groups to move them between columns.
+            Drag notes onto each other to create groups. Drag notes from groups to empty space to ungroup them.
           </p>
         </div>
 
@@ -250,8 +227,6 @@ export default function Grouping() {
                 <FacilitatorControls phase="grouping" canProgress />
               )}
 
-              <UngroupZone />
-
               <div className="card bg-slate-50">
                 <h4 className="font-semibold mb-2 text-sm">Grouping Stats</h4>
                 <div className="space-y-1 text-sm">
@@ -273,10 +248,10 @@ export default function Grouping() {
               <div className="card bg-blue-50">
                 <h4 className="font-semibold mb-2 text-sm">💡 Tips</h4>
                 <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
-                  <li>Drag notes onto each other to group</li>
-                  <li>Group notes from different columns!</li>
+                  <li>Drag notes onto each other to group them</li>
+                  <li>Drag notes from different columns to group together</li>
                   <li>Drag groups to move them between columns</li>
-                  <li>Drag grouped notes to "Ungroup Zone" to separate them</li>
+                  <li>Drag notes from groups to empty space to ungroup</li>
                   <li>Everyone can organize simultaneously</li>
                 </ul>
               </div>
