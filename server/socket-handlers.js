@@ -113,9 +113,10 @@ export function setupSocketHandlers(io) {
         // Don't check if just reordering within the same group
         if (oldGroupId && oldGroupId !== groupId) {
           const noteCount = noteQueries.countByGroup.get(oldGroupId);
+          console.log(`[GROUP CHECK] Group ${oldGroupId} has ${noteCount?.count} notes after moving note ${noteId}`);
 
           // Groups with 0 or 1 note don't make sense - delete them
-          if (noteCount.count <= 1) {
+          if (noteCount && noteCount.count <= 1) {
             // If there's 1 note left, ungroup it first
             if (noteCount.count === 1) {
               const remainingNotes = noteQueries.getBySession.all(sessionId)
@@ -125,13 +126,16 @@ export function setupSocketHandlers(io) {
                 const remainingNoteId = remainingNotes[0].id;
                 noteQueries.updateGroup.run(null, remainingNoteId);
                 io.to(sessionId).emit('note:moved', { noteId: remainingNoteId, groupId: null });
+                console.log(`[GROUP CHECK] Ungrouped remaining note ${remainingNoteId}`);
               }
             }
 
             // Delete the group
             groupQueries.delete.run(oldGroupId);
             io.to(sessionId).emit('group:deleted', { groupId: oldGroupId });
-            console.log(`Deleted group with ${noteCount.count} note(s): ${oldGroupId}`);
+            console.log(`[GROUP CHECK] Deleted group ${oldGroupId} with ${noteCount.count} note(s)`);
+          } else {
+            console.log(`[GROUP CHECK] Keeping group ${oldGroupId} - has ${noteCount?.count} notes`);
           }
         }
       } catch (error) {
