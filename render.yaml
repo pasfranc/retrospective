@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: retro-tool
+    env: node
+    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
+    startCommand: cd server && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        value: https://retro-tool.onrender.com
+    disk:
+      name: retro-data
+      mountPath: /app/server/data
+      sizeGB: 1
