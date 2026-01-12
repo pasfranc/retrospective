@@ -168,6 +168,10 @@ export const noteQueries = {
     UPDATE notes SET group_id = ? WHERE id = ?
   `),
 
+  updateColumn: db.prepare(`
+    UPDATE notes SET column = ? WHERE id = ?
+  `),
+
   delete: db.prepare(`
     DELETE FROM notes WHERE id = ?
   `)

@@ -44,9 +44,9 @@ const useRetroStore = create((set, get) => ({
 
   // Notes
   addNote: (note) => set((state) => ({ notes: [...state.notes, note] })),
-  moveNote: ({ noteId, groupId }) => set((state) => ({
+  moveNote: ({ noteId, groupId, column }) => set((state) => ({
     notes: state.notes.map(n =>
-      n.id === noteId ? { ...n, group_id: groupId } : n
+      n.id === noteId ? { ...n, group_id: groupId, ...(column !== undefined && { column }) } : n
     )
   })),
 

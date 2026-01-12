@@ -44,7 +44,7 @@ function DraggableGroup({ group }) {
   );
 }
 
-function ColumnDropZone({ column }) {
+function ColumnDropZone({ column, children }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${column}`
   });
@@ -52,11 +52,12 @@ function ColumnDropZone({ column }) {
   return (
     <div
       ref={setNodeRef}
-      className={`transition-all rounded-lg ${
+      className={`transition-all rounded-lg min-h-[400px] ${
         isOver ? 'bg-blue-50 ring-2 ring-primary ring-opacity-50' : ''
       }`}
-      style={{ minHeight: '100px' }}
-    />
+    >
+      {children}
+    </div>
   );
 }
 
@@ -127,11 +128,18 @@ export default function Grouping() {
     const draggedNoteId = activeId;
     const draggedNote = notes.find(n => n.id === draggedNoteId);
 
-    // Check if dropped on a column - ungroup the note if it's in a group
+    // Check if dropped on a column - ungroup and/or change column
     if (targetId.startsWith('column-')) {
-      if (draggedNote?.group_id) {
-        // Ungroup the note
-        socket?.emit('note:move', { noteId: draggedNoteId, groupId: null });
+      const targetColumn = targetId.replace('column-', '');
+      const needsUngroup = draggedNote?.group_id !== null;
+      const needsColumnChange = draggedNote?.column !== targetColumn;
+
+      if (needsUngroup || needsColumnChange) {
+        socket?.emit('note:move', {
+          noteId: draggedNoteId,
+          groupId: null, // Always ungroup when dropped on column
+          column: targetColumn
+        });
       }
       return;
     }
@@ -167,7 +175,7 @@ export default function Grouping() {
         <div className="mt-8 mb-6">
           <h1 className="text-3xl font-bold mb-2">Grouping</h1>
           <p className="text-slate-600">
-            Drag notes onto each other to create groups. Drag notes from groups to empty space to ungroup them.
+            Drag notes onto each other to create groups. Drag notes to empty space to ungroup or change column.
           </p>
         </div>
 
@@ -189,17 +197,15 @@ export default function Grouping() {
                   ];
 
                   return (
-                    <div key={column} className="relative">
+                    <div key={column}>
                       <h3 className="text-xl font-bold mb-4 capitalize">{column}</h3>
 
                       <SortableContext
                         items={allItems}
                         strategy={verticalListSortingStrategy}
                       >
-                        <div className="space-y-3 relative">
-                          <ColumnDropZone column={column} />
-
-                          <div className="space-y-3 absolute inset-0">
+                        <ColumnDropZone column={column}>
+                          <div className="space-y-3">
                             {columnGroups.map(group => (
                               <DraggableGroup key={group.id} group={group} />
                             ))}
@@ -214,7 +220,7 @@ export default function Grouping() {
                               </div>
                             )}
                           </div>
-                        </div>
+                        </ColumnDropZone>
                       </SortableContext>
                     </div>
                   );
@@ -251,7 +257,7 @@ export default function Grouping() {
                   <li>Drag notes onto each other to group them</li>
                   <li>Drag notes from different columns to group together</li>
                   <li>Drag groups to move them between columns</li>
-                  <li>Drag notes from groups to empty space to ungroup</li>
+                  <li>Drag notes to empty space to ungroup or change column</li>
                   <li>Everyone can organize simultaneously</li>
                 </ul>
               </div>

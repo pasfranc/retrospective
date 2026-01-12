@@ -91,7 +91,7 @@ export function setupSocketHandlers(io) {
     });
 
     // Move note (drag & drop)
-    socket.on('note:move', ({ noteId, groupId }) => {
+    socket.on('note:move', ({ noteId, groupId, column }) => {
       try {
         const { sessionId } = socket.data;
 
@@ -99,10 +99,15 @@ export function setupSocketHandlers(io) {
         const note = noteQueries.getById.get(noteId);
         const oldGroupId = note?.group_id;
 
-        // Move the note to new group (or null to ungroup)
+        // Update group (or null to ungroup)
         noteQueries.updateGroup.run(groupId, noteId);
 
-        io.to(sessionId).emit('note:moved', { noteId, groupId });
+        // Update column if provided
+        if (column !== undefined && column !== note.column) {
+          noteQueries.updateColumn.run(column, noteId);
+        }
+
+        io.to(sessionId).emit('note:moved', { noteId, groupId, column });
 
         // If the note was in a group, check if that group is now empty
         if (oldGroupId) {
