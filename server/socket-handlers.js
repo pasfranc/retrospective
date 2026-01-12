@@ -109,15 +109,28 @@ export function setupSocketHandlers(io) {
 
         io.to(sessionId).emit('note:moved', { noteId, groupId, column });
 
-        // If the note was in a group, check if that group is now empty
+        // If the note was in a group, check if that group now has 0 or 1 notes
         if (oldGroupId) {
           const noteCount = noteQueries.countByGroup.get(oldGroupId);
 
-          if (noteCount.count === 0) {
-            // Delete the empty group
+          // Groups with 0 or 1 note don't make sense - delete them
+          if (noteCount.count <= 1) {
+            // If there's 1 note left, ungroup it first
+            if (noteCount.count === 1) {
+              const remainingNotes = noteQueries.getBySession.all(sessionId)
+                .filter(n => n.group_id === oldGroupId);
+
+              if (remainingNotes.length === 1) {
+                const remainingNoteId = remainingNotes[0].id;
+                noteQueries.updateGroup.run(null, remainingNoteId);
+                io.to(sessionId).emit('note:moved', { noteId: remainingNoteId, groupId: null });
+              }
+            }
+
+            // Delete the group
             groupQueries.delete.run(oldGroupId);
             io.to(sessionId).emit('group:deleted', { groupId: oldGroupId });
-            console.log(`Deleted empty group: ${oldGroupId}`);
+            console.log(`Deleted group with ${noteCount.count} note(s): ${oldGroupId}`);
           }
         }
       } catch (error) {
