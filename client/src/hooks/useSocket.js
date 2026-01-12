@@ -17,6 +17,7 @@ export function useSocket(token, sessionId) {
     addGroup,
     updateGroup,
     moveGroup,
+    deleteGroup,
     updateVotes,
     addAction,
     setPhase
@@ -73,6 +74,10 @@ export function useSocket(token, sessionId) {
 
     socket.on('group:moved', (data) => {
       moveGroup(data);
+    });
+
+    socket.on('group:deleted', (data) => {
+      deleteGroup(data);
     });
 
     socket.on('votes:updated', (votes) => {

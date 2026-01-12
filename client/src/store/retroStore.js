@@ -67,6 +67,9 @@ const useRetroStore = create((set, get) => ({
       g.id === groupId ? { ...g, column } : g
     )
   })),
+  deleteGroup: ({ groupId }) => set((state) => ({
+    groups: state.groups.filter(g => g.id !== groupId)
+  })),
 
   // Votes
   updateVotes: (votes) => set({ votes }),

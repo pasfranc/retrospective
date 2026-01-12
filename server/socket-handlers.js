@@ -95,9 +95,26 @@ export function setupSocketHandlers(io) {
       try {
         const { sessionId } = socket.data;
 
+        // Get the note to check its current group
+        const note = noteQueries.getById.get(noteId);
+        const oldGroupId = note?.group_id;
+
+        // Move the note to new group (or null to ungroup)
         noteQueries.updateGroup.run(groupId, noteId);
 
         io.to(sessionId).emit('note:moved', { noteId, groupId });
+
+        // If the note was in a group, check if that group is now empty
+        if (oldGroupId) {
+          const noteCount = noteQueries.countByGroup.get(oldGroupId);
+
+          if (noteCount.count === 0) {
+            // Delete the empty group
+            groupQueries.delete.run(oldGroupId);
+            io.to(sessionId).emit('group:deleted', { groupId: oldGroupId });
+            console.log(`Deleted empty group: ${oldGroupId}`);
+          }
+        }
       } catch (error) {
         console.error('Note move error:', error);
         socket.emit('error', { message: 'Failed to move note' });

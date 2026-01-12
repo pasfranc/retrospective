@@ -156,6 +156,14 @@ export const noteQueries = {
     SELECT * FROM notes WHERE session_id = ? ORDER BY created_at ASC
   `),
 
+  getById: db.prepare(`
+    SELECT * FROM notes WHERE id = ?
+  `),
+
+  countByGroup: db.prepare(`
+    SELECT COUNT(*) as count FROM notes WHERE group_id = ?
+  `),
+
   updateGroup: db.prepare(`
     UPDATE notes SET group_id = ? WHERE id = ?
   `),
