@@ -109,8 +109,9 @@ export function setupSocketHandlers(io) {
 
         io.to(sessionId).emit('note:moved', { noteId, groupId, column });
 
-        // If the note was in a group, check if that group now has 0 or 1 notes
-        if (oldGroupId) {
+        // Only check for group deletion if the note LEFT a group (changed groups)
+        // Don't check if just reordering within the same group
+        if (oldGroupId && oldGroupId !== groupId) {
           const noteCount = noteQueries.countByGroup.get(oldGroupId);
 
           // Groups with 0 or 1 note don't make sense - delete them
