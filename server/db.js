@@ -180,6 +180,10 @@ export const groupQueries = {
     UPDATE groups SET title = ? WHERE id = ?
   `),
 
+  updateColumn: db.prepare(`
+    UPDATE groups SET column = ? WHERE id = ?
+  `),
+
   delete: db.prepare(`
     DELETE FROM groups WHERE id = ?
   `)

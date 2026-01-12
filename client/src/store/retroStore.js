@@ -62,6 +62,11 @@ const useRetroStore = create((set, get) => ({
       g.id === groupId ? { ...g, title } : g
     )
   })),
+  moveGroup: ({ groupId, column }) => set((state) => ({
+    groups: state.groups.map(g =>
+      g.id === groupId ? { ...g, column } : g
+    )
+  })),
 
   // Votes
   updateVotes: (votes) => set({ votes }),

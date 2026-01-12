@@ -27,6 +27,40 @@ function DraggableNote({ note }) {
   );
 }
 
+function DraggableGroup({ group }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `group-${group.id}`
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <Group group={group} editable />
+    </div>
+  );
+}
+
+function ColumnDropZone({ column }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${column}`
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`transition-all rounded-lg ${
+        isOver ? 'bg-blue-50 ring-2 ring-primary ring-opacity-50' : ''
+      }`}
+      style={{ minHeight: '100px' }}
+    />
+  );
+}
+
 function UngroupZone() {
   const { setNodeRef, isOver } = useDroppable({
     id: 'ungroup-zone'
@@ -78,8 +112,26 @@ export default function Grouping() {
 
     if (!over) return;
 
-    const draggedNoteId = active.id;
+    const activeId = active.id;
     const targetId = over.id;
+
+    // Check if dragging a group
+    const isGroup = typeof activeId === 'string' && activeId.startsWith('group-');
+
+    if (isGroup) {
+      const groupId = activeId.replace('group-', '');
+
+      // Check if dropped on a column
+      if (targetId.startsWith('column-')) {
+        const targetColumn = targetId.replace('column-', '');
+        socket?.emit('group:move', { groupId, column: targetColumn });
+        return;
+      }
+      return;
+    }
+
+    // Original note dragging logic
+    const draggedNoteId = activeId;
 
     // Check if dropped on "ungroup" zone
     if (targetId === 'ungroup-zone') {
@@ -99,10 +151,14 @@ export default function Grouping() {
       // Dropped on a group
       const groupId = targetId.replace('group-', '');
       socket?.emit('note:move', { noteId: draggedNoteId, groupId });
+    } else if (targetId.startsWith('column-')) {
+      // Dropped on a column - do nothing for notes (only groups can be moved between columns)
+      return;
     }
   };
 
   const activeNote = notes.find(n => n.id === activeId);
+  const activeGroup = groups.find(g => `group-${g.id}` === activeId);
   const allUngroupedNotes = notes.filter(n => !n.group_id);
 
   return (
@@ -113,7 +169,7 @@ export default function Grouping() {
         <div className="mt-8 mb-6">
           <h1 className="text-3xl font-bold mb-2">Grouping</h1>
           <p className="text-slate-600">
-            Drag notes onto each other to create groups. You can group notes from different columns together!
+            Drag notes onto each other to create groups. You can group notes from different columns together! Drag groups to move them between columns.
           </p>
         </div>
 
@@ -129,33 +185,39 @@ export default function Grouping() {
                 {columns.map(column => {
                   const columnGroups = groups.filter(g => g.column === column);
                   const ungroupedNotes = getUngroupedNotes(column);
+                  const allItems = [
+                    ...columnGroups.map(g => `group-${g.id}`),
+                    ...ungroupedNotes.map(n => n.id)
+                  ];
 
                   return (
-                    <div key={column}>
+                    <div key={column} className="relative">
                       <h3 className="text-xl font-bold mb-4 capitalize">{column}</h3>
 
-                      <div className="space-y-3">
-                        {columnGroups.map(group => (
-                          <div key={group.id} id={`group-${group.id}`}>
-                            <Group group={group} editable />
-                          </div>
-                        ))}
+                      <SortableContext
+                        items={allItems}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-3 relative">
+                          <ColumnDropZone column={column} />
 
-                        <SortableContext
-                          items={ungroupedNotes.map(n => n.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {ungroupedNotes.map(note => (
-                            <DraggableNote key={note.id} note={note} />
-                          ))}
-                        </SortableContext>
+                          <div className="space-y-3 absolute inset-0">
+                            {columnGroups.map(group => (
+                              <DraggableGroup key={group.id} group={group} />
+                            ))}
 
-                        {columnGroups.length === 0 && ungroupedNotes.length === 0 && (
-                          <div className="card bg-slate-50 text-center py-8 text-slate-400 text-sm">
-                            No notes in this column
+                            {ungroupedNotes.map(note => (
+                              <DraggableNote key={note.id} note={note} />
+                            ))}
+
+                            {columnGroups.length === 0 && ungroupedNotes.length === 0 && (
+                              <div className="card bg-slate-50 text-center py-8 text-slate-400 text-sm">
+                                No notes in this column
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      </SortableContext>
                     </div>
                   );
                 })}
@@ -192,6 +254,7 @@ export default function Grouping() {
                 <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
                   <li>Drag notes onto each other to group</li>
                   <li>Group notes from different columns!</li>
+                  <li>Drag groups to move them between columns</li>
                   <li>Drag grouped notes to "Ungroup Zone" to separate them</li>
                   <li>Everyone can organize simultaneously</li>
                 </ul>
@@ -200,7 +263,8 @@ export default function Grouping() {
           </div>
 
           <DragOverlay>
-            {activeNote ? <Note note={activeNote} revealed showAuthor className="rotate-3" /> : null}
+            {activeNote && <Note note={activeNote} revealed showAuthor className="rotate-3" />}
+            {activeGroup && <Group group={activeGroup} editable />}
           </DragOverlay>
         </DndContext>
       </div>

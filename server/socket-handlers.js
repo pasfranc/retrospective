@@ -147,6 +147,20 @@ export function setupSocketHandlers(io) {
       }
     });
 
+    // Move group to different column
+    socket.on('group:move', ({ groupId, column }) => {
+      try {
+        const { sessionId } = socket.data;
+
+        groupQueries.updateColumn.run(column, groupId);
+
+        io.to(sessionId).emit('group:moved', { groupId, column });
+      } catch (error) {
+        console.error('Group move error:', error);
+        socket.emit('error', { message: 'Failed to move group' });
+      }
+    });
+
     // Cast vote
     socket.on('vote:cast', ({ targetId, targetType }) => {
       try {
