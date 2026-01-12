@@ -102,6 +102,9 @@ function initDatabase() {
   console.log('Database initialized successfully');
 }
 
+// Initialize the database BEFORE creating prepared statements
+initDatabase();
+
 // Session queries
 export const sessionQueries = {
   create: db.prepare(`
@@ -221,8 +224,5 @@ export const actionQueries = {
     DELETE FROM action_items WHERE id = ?
   `)
 };
-
-// Initialize the database
-initDatabase();
 
 export default db;
