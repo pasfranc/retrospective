@@ -66,7 +66,7 @@ function initDatabase() {
       id TEXT PRIMARY KEY,
       session_id TEXT NOT NULL,
       title TEXT NOT NULL DEFAULT '',
-      column TEXT NOT NULL CHECK(column IN ('start', 'stop', 'continue')),
+      column TEXT NOT NULL CHECK(column IN ('start', 'stop', 'continue', 'mixed')),
       created_at INTEGER NOT NULL,
       FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
     )
@@ -101,6 +101,9 @@ function initDatabase() {
 
   console.log('Database initialized successfully');
 }
+
+// Initialize the database BEFORE creating prepared statements
+initDatabase();
 
 // Session queries
 export const sessionQueries = {
@@ -153,8 +156,24 @@ export const noteQueries = {
     SELECT * FROM notes WHERE session_id = ? ORDER BY created_at ASC
   `),
 
+  getById: db.prepare(`
+    SELECT * FROM notes WHERE id = ?
+  `),
+
+  countByGroup: db.prepare(`
+    SELECT COUNT(*) as count FROM notes WHERE group_id = ?
+  `),
+
   updateGroup: db.prepare(`
     UPDATE notes SET group_id = ? WHERE id = ?
+  `),
+
+  updateColumn: db.prepare(`
+    UPDATE notes SET column = ? WHERE id = ?
+  `),
+
+  updateText: db.prepare(`
+    UPDATE notes SET text = ? WHERE id = ?
   `),
 
   delete: db.prepare(`
@@ -175,6 +194,10 @@ export const groupQueries = {
 
   updateTitle: db.prepare(`
     UPDATE groups SET title = ? WHERE id = ?
+  `),
+
+  updateColumn: db.prepare(`
+    UPDATE groups SET column = ? WHERE id = ?
   `),
 
   delete: db.prepare(`
@@ -221,8 +244,5 @@ export const actionQueries = {
     DELETE FROM action_items WHERE id = ?
   `)
 };
-
-// Initialize the database
-initDatabase();
 
 export default db;

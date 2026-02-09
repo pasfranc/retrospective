@@ -90,14 +90,110 @@ export function setupSocketHandlers(io) {
       }
     });
 
+    // Edit note (author only)
+    socket.on('note:edit', ({ noteId, text }) => {
+      try {
+        const { sessionId, email } = socket.data;
+        const note = noteQueries.getById.get(noteId);
+
+        if (!note || note.author_email !== email) {
+          socket.emit('error', { message: 'Can only edit your own notes' });
+          return;
+        }
+
+        noteQueries.updateText.run(text, noteId);
+        io.to(sessionId).emit('note:edited', { noteId, text });
+      } catch (error) {
+        console.error('Note edit error:', error);
+        socket.emit('error', { message: 'Failed to edit note' });
+      }
+    });
+
+    // Delete note (author only)
+    socket.on('note:delete', ({ noteId }) => {
+      try {
+        const { sessionId, email } = socket.data;
+        const note = noteQueries.getById.get(noteId);
+
+        if (!note || note.author_email !== email) {
+          socket.emit('error', { message: 'Can only delete your own notes' });
+          return;
+        }
+
+        const oldGroupId = note.group_id;
+        noteQueries.delete.run(noteId);
+        io.to(sessionId).emit('note:deleted', { noteId });
+
+        // Clean up group if it becomes empty or has only 1 note
+        if (oldGroupId) {
+          const noteCount = noteQueries.countByGroup.get(oldGroupId);
+          if (noteCount && noteCount.count <= 1) {
+            if (noteCount.count === 1) {
+              const remainingNotes = noteQueries.getBySession.all(sessionId)
+                .filter(n => n.group_id === oldGroupId);
+              if (remainingNotes.length === 1) {
+                noteQueries.updateGroup.run(null, remainingNotes[0].id);
+                io.to(sessionId).emit('note:moved', { noteId: remainingNotes[0].id, groupId: null });
+              }
+            }
+            groupQueries.delete.run(oldGroupId);
+            io.to(sessionId).emit('group:deleted', { groupId: oldGroupId });
+          }
+        }
+      } catch (error) {
+        console.error('Note delete error:', error);
+        socket.emit('error', { message: 'Failed to delete note' });
+      }
+    });
+
     // Move note (drag & drop)
-    socket.on('note:move', ({ noteId, groupId }) => {
+    socket.on('note:move', ({ noteId, groupId, column }) => {
       try {
         const { sessionId } = socket.data;
 
+        // Get the note to check its current group
+        const note = noteQueries.getById.get(noteId);
+        const oldGroupId = note?.group_id;
+
+        // Update group (or null to ungroup)
         noteQueries.updateGroup.run(groupId, noteId);
 
-        io.to(sessionId).emit('note:moved', { noteId, groupId });
+        // Update column if provided
+        if (column !== undefined && column !== note.column) {
+          noteQueries.updateColumn.run(column, noteId);
+        }
+
+        io.to(sessionId).emit('note:moved', { noteId, groupId, column });
+
+        // Only check for group deletion if the note LEFT a group (changed groups)
+        // Don't check if just reordering within the same group
+        if (oldGroupId && oldGroupId !== groupId) {
+          const noteCount = noteQueries.countByGroup.get(oldGroupId);
+          console.log(`[GROUP CHECK] Group ${oldGroupId} has ${noteCount?.count} notes after moving note ${noteId}`);
+
+          // Groups with 0 or 1 note don't make sense - delete them
+          if (noteCount && noteCount.count <= 1) {
+            // If there's 1 note left, ungroup it first
+            if (noteCount.count === 1) {
+              const remainingNotes = noteQueries.getBySession.all(sessionId)
+                .filter(n => n.group_id === oldGroupId);
+
+              if (remainingNotes.length === 1) {
+                const remainingNoteId = remainingNotes[0].id;
+                noteQueries.updateGroup.run(null, remainingNoteId);
+                io.to(sessionId).emit('note:moved', { noteId: remainingNoteId, groupId: null });
+                console.log(`[GROUP CHECK] Ungrouped remaining note ${remainingNoteId}`);
+              }
+            }
+
+            // Delete the group
+            groupQueries.delete.run(oldGroupId);
+            io.to(sessionId).emit('group:deleted', { groupId: oldGroupId });
+            console.log(`[GROUP CHECK] Deleted group ${oldGroupId} with ${noteCount.count} note(s)`);
+          } else {
+            console.log(`[GROUP CHECK] Keeping group ${oldGroupId} - has ${noteCount?.count} notes`);
+          }
+        }
       } catch (error) {
         console.error('Note move error:', error);
         socket.emit('error', { message: 'Failed to move note' });
@@ -144,6 +240,20 @@ export function setupSocketHandlers(io) {
       } catch (error) {
         console.error('Group update error:', error);
         socket.emit('error', { message: 'Failed to update group' });
+      }
+    });
+
+    // Move group to different column
+    socket.on('group:move', ({ groupId, column }) => {
+      try {
+        const { sessionId } = socket.data;
+
+        groupQueries.updateColumn.run(column, groupId);
+
+        io.to(sessionId).emit('group:moved', { groupId, column });
+      } catch (error) {
+        console.error('Group move error:', error);
+        socket.emit('error', { message: 'Failed to move group' });
       }
     });
 

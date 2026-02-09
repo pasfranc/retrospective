@@ -13,9 +13,13 @@ export function useSocket(token, sessionId) {
     setSessionState,
     updateParticipants,
     addNote,
+    editNote,
+    deleteNote,
     moveNote,
     addGroup,
     updateGroup,
+    moveGroup,
+    deleteGroup,
     updateVotes,
     addAction,
     setPhase
@@ -58,6 +62,14 @@ export function useSocket(token, sessionId) {
       addNote(note);
     });
 
+    socket.on('note:edited', (data) => {
+      editNote(data);
+    });
+
+    socket.on('note:deleted', (data) => {
+      deleteNote(data);
+    });
+
     socket.on('note:moved', (data) => {
       moveNote(data);
     });
@@ -68,6 +80,14 @@ export function useSocket(token, sessionId) {
 
     socket.on('group:updated', (data) => {
       updateGroup(data);
+    });
+
+    socket.on('group:moved', (data) => {
+      moveGroup(data);
+    });
+
+    socket.on('group:deleted', (data) => {
+      deleteGroup(data);
     });
 
     socket.on('votes:updated', (votes) => {

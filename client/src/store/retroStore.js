@@ -44,9 +44,15 @@ const useRetroStore = create((set, get) => ({
 
   // Notes
   addNote: (note) => set((state) => ({ notes: [...state.notes, note] })),
-  moveNote: ({ noteId, groupId }) => set((state) => ({
+  editNote: ({ noteId, text }) => set((state) => ({
+    notes: state.notes.map(n => n.id === noteId ? { ...n, text } : n)
+  })),
+  deleteNote: ({ noteId }) => set((state) => ({
+    notes: state.notes.filter(n => n.id !== noteId)
+  })),
+  moveNote: ({ noteId, groupId, column }) => set((state) => ({
     notes: state.notes.map(n =>
-      n.id === noteId ? { ...n, group_id: groupId } : n
+      n.id === noteId ? { ...n, group_id: groupId, ...(column !== undefined && { column }) } : n
     )
   })),
 
@@ -61,6 +67,14 @@ const useRetroStore = create((set, get) => ({
     groups: state.groups.map(g =>
       g.id === groupId ? { ...g, title } : g
     )
+  })),
+  moveGroup: ({ groupId, column }) => set((state) => ({
+    groups: state.groups.map(g =>
+      g.id === groupId ? { ...g, column } : g
+    )
+  })),
+  deleteGroup: ({ groupId }) => set((state) => ({
+    groups: state.groups.filter(g => g.id !== groupId)
   })),
 
   // Votes

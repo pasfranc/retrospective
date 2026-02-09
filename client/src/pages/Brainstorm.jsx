@@ -7,7 +7,7 @@ import FacilitatorControls from '../components/FacilitatorControls';
 import useRetroStore from '../store/retroStore';
 
 export default function Brainstorm() {
-  const { socket, notes, participants, isFacilitator, currentPhase } = useRetroStore();
+  const { socket, notes, participants, isFacilitator, currentPhase, user } = useRetroStore();
   const [revealed, setRevealed] = useState(false);
   const [newNotes, setNewNotes] = useState({ start: '', stop: '', continue: '' });
 
@@ -23,6 +23,14 @@ export default function Brainstorm() {
 
     socket?.emit('note:add', { column, text });
     setNewNotes({ ...newNotes, [column]: '' });
+  };
+
+  const handleEditNote = (noteId, text) => {
+    socket?.emit('note:edit', { noteId, text });
+  };
+
+  const handleDeleteNote = (noteId) => {
+    socket?.emit('note:delete', { noteId });
   };
 
   const handleReveal = () => {
@@ -77,7 +85,7 @@ export default function Brainstorm() {
 
                   <div className="space-y-3">
                     {getColumnNotes(column.id).map(note => (
-                      <Note key={note.id} note={note} revealed={revealed} />
+                      <Note key={note.id} note={note} revealed={revealed} currentUserEmail={user?.email} onEdit={handleEditNote} onDelete={handleDeleteNote} />
                     ))}
 
                     {getColumnNotes(column.id).length === 0 && (
