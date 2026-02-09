@@ -25,6 +25,14 @@ export default function Brainstorm() {
     setNewNotes({ ...newNotes, [column]: '' });
   };
 
+  const handleEditNote = (noteId, text) => {
+    socket?.emit('note:edit', { noteId, text });
+  };
+
+  const handleDeleteNote = (noteId) => {
+    socket?.emit('note:delete', { noteId });
+  };
+
   const handleReveal = () => {
     setRevealed(true);
   };
@@ -77,7 +85,7 @@ export default function Brainstorm() {
 
                   <div className="space-y-3">
                     {getColumnNotes(column.id).map(note => (
-                      <Note key={note.id} note={note} revealed={revealed} currentUserEmail={user?.email} />
+                      <Note key={note.id} note={note} revealed={revealed} currentUserEmail={user?.email} onEdit={handleEditNote} onDelete={handleDeleteNote} />
                     ))}
 
                     {getColumnNotes(column.id).length === 0 && (
