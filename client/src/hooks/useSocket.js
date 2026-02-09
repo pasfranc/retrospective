@@ -13,6 +13,8 @@ export function useSocket(token, sessionId) {
     setSessionState,
     updateParticipants,
     addNote,
+    editNote,
+    deleteNote,
     moveNote,
     addGroup,
     updateGroup,
@@ -58,6 +60,14 @@ export function useSocket(token, sessionId) {
 
     socket.on('note:added', (note) => {
       addNote(note);
+    });
+
+    socket.on('note:edited', (data) => {
+      editNote(data);
+    });
+
+    socket.on('note:deleted', (data) => {
+      deleteNote(data);
     });
 
     socket.on('note:moved', (data) => {

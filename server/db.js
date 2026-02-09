@@ -172,6 +172,10 @@ export const noteQueries = {
     UPDATE notes SET column = ? WHERE id = ?
   `),
 
+  updateText: db.prepare(`
+    UPDATE notes SET text = ? WHERE id = ?
+  `),
+
   delete: db.prepare(`
     DELETE FROM notes WHERE id = ?
   `)

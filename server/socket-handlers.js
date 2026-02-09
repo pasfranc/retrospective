@@ -90,6 +90,62 @@ export function setupSocketHandlers(io) {
       }
     });
 
+    // Edit note (author only)
+    socket.on('note:edit', ({ noteId, text }) => {
+      try {
+        const { sessionId, email } = socket.data;
+        const note = noteQueries.getById.get(noteId);
+
+        if (!note || note.author_email !== email) {
+          socket.emit('error', { message: 'Can only edit your own notes' });
+          return;
+        }
+
+        noteQueries.updateText.run(text, noteId);
+        io.to(sessionId).emit('note:edited', { noteId, text });
+      } catch (error) {
+        console.error('Note edit error:', error);
+        socket.emit('error', { message: 'Failed to edit note' });
+      }
+    });
+
+    // Delete note (author only)
+    socket.on('note:delete', ({ noteId }) => {
+      try {
+        const { sessionId, email } = socket.data;
+        const note = noteQueries.getById.get(noteId);
+
+        if (!note || note.author_email !== email) {
+          socket.emit('error', { message: 'Can only delete your own notes' });
+          return;
+        }
+
+        const oldGroupId = note.group_id;
+        noteQueries.delete.run(noteId);
+        io.to(sessionId).emit('note:deleted', { noteId });
+
+        // Clean up group if it becomes empty or has only 1 note
+        if (oldGroupId) {
+          const noteCount = noteQueries.countByGroup.get(oldGroupId);
+          if (noteCount && noteCount.count <= 1) {
+            if (noteCount.count === 1) {
+              const remainingNotes = noteQueries.getBySession.all(sessionId)
+                .filter(n => n.group_id === oldGroupId);
+              if (remainingNotes.length === 1) {
+                noteQueries.updateGroup.run(null, remainingNotes[0].id);
+                io.to(sessionId).emit('note:moved', { noteId: remainingNotes[0].id, groupId: null });
+              }
+            }
+            groupQueries.delete.run(oldGroupId);
+            io.to(sessionId).emit('group:deleted', { groupId: oldGroupId });
+          }
+        }
+      } catch (error) {
+        console.error('Note delete error:', error);
+        socket.emit('error', { message: 'Failed to delete note' });
+      }
+    });
+
     // Move note (drag & drop)
     socket.on('note:move', ({ noteId, groupId, column }) => {
       try {
